@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GMB Rank Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Outfit:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCr4Fd93XyuVoK8GtHHDS1-eIvOvC0MR5g&libraries=geometry"></script>
+<style>
+:root{--bg:#060608;--card:#16161f;--border:#1e1e2e;--border2:#2a2a3d;--green:#00e676;--yellow:#ffd740;--orange:#ff6d00;--red:#ff1744;--blue:#448aff;--text:#e8e8f2;--muted:#5a5a7a;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+header{position:sticky;top:0;z-index:100;background:rgba(6,6,8,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:56px;}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px;}
+.logo-icon{width:26px;height:26px;background:linear-gradient(135deg,var(--green),var(--blue));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.badge{font-family:'JetBrains Mono',monospace;font-size:11px;display:flex;align-items:center;gap:5px;color:var(--green);background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.2);padding:4px 10px;border-radius:20px;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.container{max-width:1100px;margin:0 auto;padding:20px 16px;}
+.input-panel{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px;}
+.panel-title{font-family:'Syne',sans-serif;font-weight:700;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.panel-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;}
+@media(max-width:700px){.form-grid{grid-template-columns:1fr;}}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;}
+.field input,.field select{background:#0e0e14;border:1px solid var(--border2);border-radius:10px;padding:10px 14px;color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;width:100%;}
+.field input:focus,.field select:focus{border-color:var(--green);}
+.field select option{background:var(--card);}
+.bottom-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.grid-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;}
+.grid-btns{display:flex;gap:6px;}
+.grid-btn{background:#0e0e14;border:1px solid var(--border2);border-radius:8px;padding:8px 14px;color:var(--muted);font-size:12px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all 0.15s;}
+.grid-btn.active{border-color:var(--green);color:var(--green);background:rgba(0,230,118,0.08);}
+.btn-scan{background:linear-gradient(135deg,var(--green),#00bcd4);color:#060608;border:none;border-radius:10px;padding:11px 26px;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:8px;}
+.btn-scan:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,230,118,0.3);}
+.btn-scan:disabled{opacity:0.5;cursor:not-allowed;transform:none;box-shadow:none;}
+.results-grid{display:grid;grid-template-columns:1fr 300px;gap:18px;}
+@media(max-width:900px){.results-grid{grid-template-columns:1fr;}}
+.map-panel{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+.map-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.map-title{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;}
+.map-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+#map{width:100%;height:460px;background:#0e0e14;}
+.map-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:460px;gap:12px;color:var(--muted);}
+.map-empty-icon{font-size:40px;opacity:0.3;}
+.legend{padding:12px 18px;border-top:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.legend-title{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;}
+.legend-items{display:flex;gap:12px;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
+.legend-dot{width:10px;height:10px;border-radius:50%;}
+.stats-col{display:flex;flex-direction:column;gap:16px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;}
+.stat-title{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px;}
+.agr-wrap{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.agr-ring{position:relative;width:74px;height:74px;flex-shrink:0;}
+.agr-ring svg{transform:rotate(-90deg);}
+.ring-bg{fill:none;stroke:var(--border2);stroke-width:7;}
+.ring-fill{fill:none;stroke-width:7;stroke-linecap:round;stroke-dasharray:207;stroke-dashoffset:207;transition:stroke-dashoffset 1.5s cubic-bezier(0.4,0,0.2,1);}
+.agr-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:20px;}
+.agr-info .label{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;margin-bottom:4px;}
+.agr-info .sub{font-size:12px;color:var(--muted);line-height:1.4;}
+.dist-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.dist-item{background:#0e0e14;border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;}
+.dist-count{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;margin-bottom:2px;}
+.dist-label{font-size:10px;color:var(--muted);}
+.history-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;flex:1;}
+.history-list{display:flex;flex-direction:column;gap:7px;max-height:250px;overflow-y:auto;}
+.history-item{background:#0e0e14;border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color 0.15s;}
+.history-item:hover{border-color:var(--blue);}
+.h-keyword{font-size:13px;font-weight:500;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;}
+.h-date{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);}
+.h-score{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;}
+.h-empty{color:var(--muted);font-size:13px;text-align:center;padding:16px;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(6,6,8,0.9);backdrop-filter:blur(10px);z-index:500;align-items:center;justify-content:center;}
+.overlay.show{display:flex;}
+.progress-box{background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:32px 36px;text-align:center;min-width:300px;}
+.prog-title{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;margin-bottom:6px;}
+.prog-sub{color:var(--muted);font-size:13px;margin-bottom:18px;}
+.prog-pct{font-family:'Syne',sans-serif;font-weight:800;font-size:30px;color:var(--green);margin:6px 0;}
+.prog-track{height:6px;background:var(--border2);border-radius:3px;overflow:hidden;margin-bottom:10px;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--green),#00bcd4);border-radius:3px;width:0%;transition:width 0.4s ease;}
+.prog-status{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid rgba(255,23,68,0.4);border-radius:12px;padding:12px 16px;font-size:13px;max-width:340px;z-index:1000;display:none;}
+.toast.show{display:block;animation:si 0.3s ease;}
+@keyframes si{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.btn-export{background:#0e0e14;border:1px solid var(--border2);border-radius:8px;padding:6px 12px;color:var(--text);font-size:11px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all 0.15s;}
+.btn-export:hover{border-color:var(--blue);color:var(--blue);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><div class="logo-icon">📍</div>GMB Rank Tracker</div>
+  <div class="badge"><div class="dot"></div>SerpApi + Google Maps</div>
+</header>
+<div class="container">
+  <div class="input-panel">
+    <div class="panel-title">Scan Configuration</div>
+    <div class="form-grid">
+      <div class="field"><label>Business Name (exact)</label><input id="bizName" placeholder="e.g. North Clean Service"/></div>
+      <div class="field"><label>Keyword to Track</label><input id="keyword" placeholder="e.g. house cleaning Chandigarh"/></div>
+      <div class="field"><label>Location / Address</label><input id="location" placeholder="e.g. Sector 17, Chandigarh"/></div>
+    </div>
+    <div class="bottom-row">
+      <div>
+        <div class="grid-label">Grid Size</div>
+        <div class="grid-btns">
+          <div class="grid-btn" onclick="setGrid(3,this)">3×3</div>
+          <div class="grid-btn active" onclick="setGrid(5,this)">5×5</div>
+          <div class="grid-btn" onclick="setGrid(7,this)">7×7</div>
+        </div>
+      </div>
+      <div class="field" style="min-width:120px;">
+        <label>Radius</label>
+        <select id="radius">
+          <option value="1">1 km</option>
+          <option value="2" selected>2 km</option>
+          <option value="3">3 km</option>
+          <option value="5">5 km</option>
+          <option value="10">10 km</option>
+        </select>
+      </div>
+      <button class="btn-scan" onclick="startScan()" id="scanBtn">⚡ Start Rank Scan</button>
+      <span style="font-size:11px;color:var(--muted);">~1 SerpApi credit per grid point</span>
+    </div>
+  </div>
+
+  <div class="results-grid">
+    <div class="map-panel">
+      <div class="map-header">
+        <div class="map-title">Rank Heatmap</div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div class="map-meta" id="mapMeta">No scan yet</div>
+          <button class="btn-export" onclick="exportCSV()">📥 CSV</button>
+        </div>
+      </div>
+      <div id="map">
+        <div class="map-empty">
+          <div class="map-empty-icon">🗺️</div>
+          <div>Enter details and run a scan</div>
+        </div>
+      </div>
+      <div class="legend">
+        <div class="legend-title">Rank</div>
+        <div class="legend-items">
+          <div class="legend-item"><div class="legend-dot" style="background:#00e676"></div>#1–3</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ffd740"></div>#4–7</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ff6d00"></div>#8–15</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ff1744"></div>#16+</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#5a5a7a"></div>Not Found</div>
+        </div>
+      </div>
+    </div>
+    <div class="stats-col">
+      <div class="stat-card">
+        <div class="stat-title">Average Grid Rank (AGR)</div>
+        <div class="agr-wrap">
+          <div class="agr-ring">
+            <svg width="74" height="74" viewBox="0 0 74 74">
+              <circle class="ring-bg" cx="37" cy="37" r="33"/>
+              <circle class="ring-fill" id="agrRing" cx="37" cy="37" r="33"/>
+            </svg>
+            <div class="agr-num" id="agrNum">—</div>
+          </div>
+          <div class="agr-info">
+            <div class="label" id="agrLabel">Run a scan</div>
+            <div class="sub" id="agrSub">Average rank across all grid points</div>
+          </div>
+        </div>
+        <div class="dist-grid">
+          <div class="dist-item"><div class="dist-count" style="color:var(--green)" id="d1">—</div><div class="dist-label">Top 3</div></div>
+          <div class="dist-item"><div class="dist-count" style="color:var(--yellow)" id="d2">—</div><div class="dist-label">4–7</div></div>
+          <div class="dist-item"><div class="dist-count" style="color:var(--orange)" id="d3">—</div><div class="dist-label">8–15</div></div>
+          <div class="dist-item"><div class="dist-count" style="color:var(--red)" id="d4">—</div><div class="dist-label">16+/NF</div></div>
+        </div>
+      </div>
+      <div class="history-card">
+        <div class="stat-title">Scan History</div>
+        <div class="history-list" id="historyList"><div class="h-empty">No scans yet</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="progress-box">
+    <div class="prog-title">🔍 Scanning Rankings</div>
+    <div class="prog-sub" id="pSub">Initializing...</div>
+    <div class="prog-pct" id="pPct">0%</div>
+    <div class="prog-track"><div class="prog-fill" id="pFill"></div></div>
+    <div class="prog-status" id="pStatus">Please wait...</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let gridSize=5, gMap=null, markers=[], lastResults=null;
+let history=[];
+try{history=JSON.parse(localStorage.getItem('gmb_h')||'[]');}catch(e){}
+
+function setGrid(n,el){gridSize=n;document.querySelectorAll('.grid-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+function toast(msg,d=5000){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);}
+function setP(pct,sub,status){
+  document.getElementById('pFill').style.width=pct+'%';
+  document.getElementById('pPct').textContent=Math.round(pct)+'%';
+  if(sub)document.getElementById('pSub').textContent=sub;
+  if(status)document.getElementById('pStatus').textContent=status;
+}
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+
+function generateGrid(lat,lng,size,km){
+  const pts=[],latStep=(km/111)/((size-1)/2),lngStep=latStep/Math.cos(lat*Math.PI/180),half=Math.floor(size/2);
+  for(let r=0;r<size;r++)for(let c=0;c<size;c++)pts.push({lat:lat+(r-half)*latStep,lng:lng+(c-half)*lngStep,row:r,col:c});
+  return pts;
+}
+
+function geocode(address){
+  return new Promise((res,rej)=>{
+    new google.maps.Geocoder().geocode({address},(results,status)=>{
+      if(status==='OK'&&results.length)res(results[0].geometry.location);
+      else rej(new Error('Location not found: '+status));
+    });
+  });
+}
+
+async function getRank(lat,lng,keyword,bizName){
+  const resp=await fetch(`/api/rank?keyword=${encodeURIComponent(keyword)}&lat=${lat}&lng=${lng}`);
+  if(!resp.ok)throw new Error('API error '+resp.status);
+  const data=await resp.json();
+  const results=data.local_results||[];
+  const biz=bizName.toLowerCase().trim();
+  for(let i=0;i<results.length;i++){
+    const name=(results[i].title||'').toLowerCase();
+    if(name.includes(biz)||biz.split(' ').slice(0,2).every(w=>w.length>2&&name.includes(w)))return i+1;
+  }
+  return null;
+}
+
+function color(rank){if(!rank)return'#5a5a7a';if(rank<=3)return'#00e676';if(rank<=7)return'#ffd740';if(rank<=15)return'#ff6d00';return'#ff1744';}
+
+async function startScan(){
+  const bizName=document.getElementById('bizName').value.trim();
+  const keyword=document.getElementById('keyword').value.trim();
+  const location=document.getElementById('location').value.trim();
+  const radius=parseFloat(document.getElementById('radius').value);
+  if(!bizName||!keyword||!location){toast('⚠️ Fill in all 3 fields');return;}
+  document.getElementById('scanBtn').disabled=true;
+  document.getElementById('overlay').classList.add('show');
+  setP(5,'Finding location...','Geocoding');
+  try{
+    const center=await geocode(location);
+    const clat=center.lat(),clng=center.lng();
+    setP(12,`Found coordinates`,'Building grid');
+    const pts=generateGrid(clat,clng,gridSize,radius);
+    const total=pts.length;
+    setP(18,`Scanning ${total} points for "${keyword}"`,'Checking ranks via SerpApi');
+    const results=[];
+    for(let i=0;i<pts.length;i++){
+      const pt=pts[i];
+      try{const rank=await getRank(pt.lat,pt.lng,keyword,bizName);results.push({...pt,rank});}
+      catch(e){results.push({...pt,rank:null});}
+      setP(18+((i+1)/total)*78,`Point ${i+1}/${total}`,`Grid [${pt.row+1},${pt.col+1}]`);
+      await delay(300);
+    }
+    setP(100,'Done! 🎉','Rendering...');
+    await delay(500);
+    document.getElementById('overlay').classList.remove('show');
+    lastResults={bizName,keyword,location,radius,gridSize,clat,clng,results,date:new Date()};
+    renderMap(clat,clng,results);
+    renderStats(results);
+    saveHistory();
+    renderHistory();
+  }catch(e){
+    document.getElementById('overlay').classList.remove('show');
+    toast('❌ '+e.message,8000);
+  }
+  document.getElementById('scanBtn').disabled=false;
+}
+
+function renderMap(clat,clng,results){
+  const el=document.getElementById('map');
+  el.innerHTML='';
+  gMap=new google.maps.Map(el,{center:{lat:clat,lng:clng},zoom:getZoom(parseFloat(document.getElementById('radius').value)),styles:darkStyle(),mapTypeControl:false,streetViewControl:false});
+  markers.forEach(m=>m.setMap(null));markers=[];
+  results.forEach(pt=>{
+    const c=color(pt.rank),lbl=pt.rank?String(pt.rank):'?';
+    const m=new google.maps.Marker({
+      position:{lat:pt.lat,lng:pt.lng},map:gMap,
+      label:{text:lbl,color:(pt.rank&&pt.rank<=7)?'#000':'#fff',fontSize:'11px',fontWeight:'bold',fontFamily:'JetBrains Mono,monospace'},
+      icon:{path:google.maps.SymbolPath.CIRCLE,scale:17,fillColor:c,fillOpacity:0.93,strokeColor:'rgba(255,255,255,0.2)',strokeWeight:1.5},
+      title:`Rank ${pt.rank||'Not Found'}`
+    });
+    markers.push(m);
+  });
+  const avg=calcAvg(results);
+  document.getElementById('mapMeta').textContent=`${results.length} pts · AGR ${avg?avg.toFixed(1):'N/F'} · ${new Date().toLocaleTimeString()}`;
+}
+
+function calcAvg(r){const x=r.filter(p=>p.rank);return x.length?x.reduce((s,p)=>s+p.rank,0)/x.length:null;}
+
+function renderStats(results){
+  const avg=calcAvg(results);
+  const ring=document.getElementById('agrRing');
+  document.getElementById('d1').textContent=results.filter(r=>r.rank&&r.rank<=3).length;
+  document.getElementById('d2').textContent=results.filter(r=>r.rank&&r.rank>=4&&r.rank<=7).length;
+  document.getElementById('d3').textContent=results.filter(r=>r.rank&&r.rank>=8&&r.rank<=15).length;
+  document.getElementById('d4').textContent=results.filter(r=>!r.rank||r.rank>15).length;
+  if(avg){
+    document.getElementById('agrNum').textContent=avg.toFixed(1);
+    const pct=Math.max(0,Math.min(100,((20-avg)/20)*100));
+    setTimeout(()=>{ring.style.strokeDashoffset=207-(pct/100)*207;},100);
+    if(avg<=3){ring.style.stroke='#00e676';document.getElementById('agrLabel').textContent='🏆 Excellent';document.getElementById('agrSub').textContent='Dominating the local pack!';}
+    else if(avg<=7){ring.style.stroke='#ffd740';document.getElementById('agrLabel').textContent='✅ Good Ranking';document.getElementById('agrSub').textContent='Solid presence, room to grow.';}
+    else if(avg<=12){ring.style.stroke='#ff6d00';document.getElementById('agrLabel').textContent='⚠️ Needs Work';document.getElementById('agrSub').textContent='Optimize GBP to improve.';}
+    else{ring.style.stroke='#ff1744';document.getElementById('agrLabel').textContent='🚨 Weak Ranking';document.getElementById('agrSub').textContent='Serious optimization needed.';}
+  }else{
+    document.getElementById('agrNum').textContent='N/F';ring.style.stroke='#5a5a7a';ring.style.strokeDashoffset=207;
+    document.getElementById('agrLabel').textContent='Not Found';document.getElementById('agrSub').textContent='Not in top 20 at any point.';
+  }
+}
+
+function saveHistory(){
+  const avg=calcAvg(lastResults.results);
+  history.unshift({bizName:lastResults.bizName,keyword:lastResults.keyword,gridSize:lastResults.gridSize,avg:avg?avg.toFixed(1):null,date:lastResults.date.toISOString(),results:lastResults.results});
+  if(history.length>15)history=history.slice(0,15);
+  try{localStorage.setItem('gmb_h',JSON.stringify(history));}catch(e){}
+}
+
+function renderHistory(){
+  const el=document.getElementById('historyList');
+  if(!history.length){el.innerHTML='<div class="h-empty">No scans yet</div>';return;}
+  el.innerHTML=history.map((s,i)=>{
+    const c=s.avg<=3?'var(--green)':s.avg<=7?'var(--yellow)':s.avg<=12?'var(--orange)':'var(--red)';
+    return`<div class="history-item" onclick="loadScan(${i})"><div><div class="h-keyword">${s.keyword}</div><div class="h-date">${s.bizName} · ${s.gridSize}×${s.gridSize} · ${new Date(s.date).toLocaleDateString()}</div></div><div class="h-score" style="color:${c}">${s.avg||'N/F'}</div></div>`;
+  }).join('');
+}
+
+function loadScan(i){
+  const s=history[i];
+  document.getElementById('bizName').value=s.bizName;
+  document.getElementById('keyword').value=s.keyword;
+  renderStats(s.results);
+  toast('📊 Historical scan loaded',2000);
+}
+
+function exportCSV(){
+  if(!lastResults){toast('⚠️ Run a scan first');return;}
+  const rows=[['Row','Col','Lat','Lng','Rank']];
+  lastResults.results.forEach(r=>rows.push([r.row+1,r.col+1,r.lat.toFixed(6),r.lng.toFixed(6),r.rank||'Not Found']));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));
+  a.download=`rank-${lastResults.keyword}-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+function getZoom(km){if(km<=1)return 15;if(km<=2)return 14;if(km<=3)return 13;if(km<=5)return 12;return 11;}
+function darkStyle(){return[{elementType:'geometry',stylers:[{color:'#0e0e14'}]},{elementType:'labels.text.stroke',stylers:[{color:'#0e0e14'}]},{elementType:'labels.text.fill',stylers:[{color:'#5a5a7a'}]},{featureType:'road',elementType:'geometry',stylers:[{color:'#1e1e2e'}]},{featureType:'water',elementType:'geometry',stylers:[{color:'#060608'}]},{featureType:'poi',elementType:'geometry',stylers:[{color:'#16161f'}]}];}
+
+renderHistory();
+</script>
+</body>
+</html>
